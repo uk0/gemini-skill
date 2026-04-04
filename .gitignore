@@ -1,0 +1,41 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Sensitive / Session data
+userdata/
+recordings/
+output/
+.env
+.env.*
+*.key
+*.pem
+*.cert
+*.p12
+proxy/
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Project docs (local only)
+docs/
+
+# Misc
+*.log
+node_modules/
