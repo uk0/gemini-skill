@@ -1,0 +1,17 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#DBEAFE', 'primaryTextColor': '#1E3A5F', 'primaryBorderColor': '#3B82F6', 'lineColor': '#3B82F6', 'secondaryColor': '#EFF6FF', 'tertiaryColor': '#F9FAFB', 'fontFamily': 'sans-serif'}}}%%
+sequenceDiagram
+    participant U as 用户/Claude Code
+    participant P as Playwright
+    participant G as Gemini Web
+    participant N as Nano Banana
+
+    U->>P: 发送提示词
+    P->>G: 点击「工具」→「制作图片」
+    P->>G: 输入 prompt + 点击发送
+    G->>N: StreamGenerate 请求
+    Note over G,N: 等待 30-60 秒生成
+    N-->>G: 图像渲染到 DOM
+    P->>P: 轮询 img.image.loaded
+    P->>G: 点击下载按钮
+    G-->>P: 下载流返回图像数据
+    P-->>U: 保存 PNG 到本地

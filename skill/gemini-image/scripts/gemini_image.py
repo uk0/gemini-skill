@@ -63,6 +63,42 @@ class GeminiImageGenerator:
         browser.close()
         pw.stop()
 
+    def _handle_sign_in(self):
+        """检测并点击登录按钮（userdata 已有会话时点击即可自动登录）"""
+        sign_in = self.page.query_selector(
+            'span.gb_ce, a[aria-label="Sign in"], '
+            'a:has-text("Sign in"), a:has-text("登录")'
+        )
+        if sign_in:
+            print("  检测到登录按钮，点击登录...")
+            sign_in.click()
+            time.sleep(5)
+            # 等待页面刷新完成
+            try:
+                self.page.wait_for_selector('rich-textarea', timeout=15000)
+            except Exception:
+                # 可能跳转到了登录页再回来，等 URL 回到 /app
+                try:
+                    self.page.wait_for_url("**/app**", timeout=15000)
+                    time.sleep(2)
+                except Exception:
+                    pass
+            # 验证是否登录成功（右上角有用户头像/名称）
+            logged_in = self.page.evaluate("""
+            () => {
+                // 检查用户头像或用户名元素
+                if (document.querySelector('img.gb_q, img.gb_r, a[aria-label*="Account"]')) return true;
+                if (document.querySelector('[data-ogsr-up], .gb_A .gb_b')) return true;
+                // 检查输入框是否出现（已登录才有）
+                if (document.querySelector('rich-textarea')) return true;
+                return false;
+            }
+            """)
+            if logged_in:
+                print("  登录成功")
+            else:
+                print("  警告: 登录状态未确认，继续尝试...")
+
     def start(self):
         self._ensure_logged_in()
         self.playwright = sync_playwright().start()
@@ -73,6 +109,11 @@ class GeminiImageGenerator:
         )
         self.page = self.browser.pages[0] if self.browser.pages else self.browser.new_page()
         self.page.goto("https://gemini.google.com/app", wait_until="domcontentloaded")
+        time.sleep(3)
+
+        # 检测是否需要点击登录按钮
+        self._handle_sign_in()
+
         try:
             self.page.wait_for_selector('rich-textarea', timeout=30000)
         except Exception:

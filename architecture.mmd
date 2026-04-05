@@ -1,0 +1,18 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#DBEAFE', 'primaryTextColor': '#1E3A5F', 'primaryBorderColor': '#3B82F6', 'lineColor': '#3B82F6', 'secondaryColor': '#EFF6FF', 'tertiaryColor': '#F9FAFB', 'fontFamily': 'sans-serif'}}}%%
+flowchart LR
+    A["🧑 用户输入提示词"] --> B["Claude Code\nSkill 调度"]
+    B --> C["Playwright\nHeadless 浏览器"]
+    C --> D["Gemini Web\n(已登录会话)"]
+    D --> E["Nano Banana\n图像生成"]
+    E --> F["DOM 监听\nimg.image.loaded"]
+    F --> G["下载按钮拦截\n+ Canvas 兜底"]
+    G --> H["📁 PNG 文件\n保存到本地"]
+
+    style A fill:#EFF6FF,stroke:#3B82F6,stroke-width:2px
+    style B fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px
+    style C fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px
+    style D fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px
+    style E fill:#FEF3C7,stroke:#D97706,stroke-width:2px
+    style F fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px
+    style G fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px
+    style H fill:#D1FAE5,stroke:#059669,stroke-width:2px
