@@ -287,91 +287,32 @@ class GeminiImageGenerator:
         return []
 
     def _download(self, timestamp: str) -> list[str]:
-        """点击每张图片的下载按钮，拦截下载流保存文件"""
         saved = []
-
-        # 方式1: 点击下载按钮拦截下载
-        # 先尝试找到图片的下载按钮
-        download_count = self.page.evaluate("""
+        images_b64 = self.page.evaluate("""
         () => {
-            // 找到所有已加载的生成图片
-            const imgs = document.querySelectorAll('img.image.loaded');
-            return imgs.length;
+            const r = [];
+            document.querySelectorAll('img.image.loaded').forEach(img => {
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = img.naturalWidth; c.height = img.naturalHeight;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    r.push(c.toDataURL('image/png').split(',')[1]);
+                } catch(e) {}
+            });
+            return r;
         }
-        """)
-
-        if download_count == 0:
-            return saved
-
-        for i in range(download_count):
+        """) or []
+        for i, b64 in enumerate(images_b64):
             try:
-                # 点击第 i 张图片触发选中/展开
-                self.page.evaluate(f"""
-                () => {{
-                    const imgs = document.querySelectorAll('img.image.loaded');
-                    if (imgs[{i}]) imgs[{i}].click();
-                }}
-                """)
-                time.sleep(1)
-
-                # 找下载按钮并拦截下载
-                with self.page.expect_download(timeout=10000) as download_info:
-                    # 点击下载按钮
-                    dl_btn = self.page.query_selector(
-                        'button[aria-label*="下载"], button[aria-label*="Download"], '
-                        'button[aria-label*="download"]'
-                    )
-                    if dl_btn:
-                        dl_btn.click()
-                    else:
-                        continue
-
-                download = download_info.value
-                fp = OUTPUT_DIR / f"gemini_{timestamp}_{i+1}.png"
-                download.save_as(str(fp))
-                size = fp.stat().st_size
-                if size < 10240:
-                    fp.unlink()
+                body = base64.b64decode(b64)
+                if len(body) < 10240:
                     continue
+                fp = OUTPUT_DIR / f"gemini_{timestamp}_{i+1}.png"
+                fp.write_bytes(body)
                 saved.append(str(fp))
-                print(f"  已保存: {fp.name} ({size//1024}KB)")
-
-            except Exception:
-                # 下载按钮方式失败，回退到 canvas
-                pass
-
-        # 方式2: 如果下载按钮没拿到，用 canvas 兜底
-        if not saved:
-            print("  使用 canvas 方式提取...")
-            images_b64 = self.page.evaluate("""
-            () => {
-                const results = [];
-                document.querySelectorAll('img.image.loaded').forEach(img => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.naturalWidth;
-                        canvas.height = img.naturalHeight;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        results.push(canvas.toDataURL('image/png').split(',')[1]);
-                    } catch(e) {}
-                });
-                return results;
-            }
-            """) or []
-
-            for j, b64 in enumerate(images_b64):
-                try:
-                    body = base64.b64decode(b64)
-                    if len(body) < 10240:
-                        continue
-                    fp = OUTPUT_DIR / f"gemini_{timestamp}_{j+1}.png"
-                    fp.write_bytes(body)
-                    saved.append(str(fp))
-                    print(f"  已保存: {fp.name} ({len(body)//1024}KB)")
-                except Exception as e:
-                    print(f"  下载失败: {e}")
-
+                print(f"  已保存: {fp.name} ({len(body)//1024}KB)")
+            except Exception as e:
+                print(f"  下载失败: {e}")
         return saved
 
     def stop(self):

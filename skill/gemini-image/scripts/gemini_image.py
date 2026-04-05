@@ -255,69 +255,31 @@ class GeminiImageGenerator:
 
     def _download(self, timestamp: str) -> list[str]:
         saved = []
-        download_count = self.page.evaluate("""
-        () => document.querySelectorAll('img.image.loaded').length
-        """)
-        if download_count == 0:
-            return saved
-
-        for i in range(download_count):
+        images_b64 = self.page.evaluate("""
+        () => {
+            const r = [];
+            document.querySelectorAll('img.image.loaded').forEach(img => {
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = img.naturalWidth; c.height = img.naturalHeight;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    r.push(c.toDataURL('image/png').split(',')[1]);
+                } catch(e) {}
+            });
+            return r;
+        }
+        """) or []
+        for i, b64 in enumerate(images_b64):
             try:
-                self.page.evaluate(f"""
-                () => {{
-                    const imgs = document.querySelectorAll('img.image.loaded');
-                    if (imgs[{i}]) imgs[{i}].click();
-                }}
-                """)
-                time.sleep(1)
-                with self.page.expect_download(timeout=10000) as dl_info:
-                    dl_btn = self.page.query_selector(
-                        'button[aria-label*="下载"], button[aria-label*="Download"], '
-                        'button[aria-label*="download"]'
-                    )
-                    if dl_btn:
-                        dl_btn.click()
-                    else:
-                        continue
-                download = dl_info.value
-                fp = OUTPUT_DIR / f"gemini_{timestamp}_{i+1}.png"
-                download.save_as(str(fp))
-                size = fp.stat().st_size
-                if size < 10240:
-                    fp.unlink()
+                body = base64.b64decode(b64)
+                if len(body) < 10240:
                     continue
+                fp = OUTPUT_DIR / f"gemini_{timestamp}_{i+1}.png"
+                fp.write_bytes(body)
                 saved.append(str(fp))
-                print(f"  已保存: {fp.name} ({size//1024}KB)")
-            except Exception:
-                pass
-
-        if not saved:
-            print("  使用 canvas 方式提取...")
-            images_b64 = self.page.evaluate("""
-            () => {
-                const r = [];
-                document.querySelectorAll('img.image.loaded').forEach(img => {
-                    try {
-                        const c = document.createElement('canvas');
-                        c.width = img.naturalWidth; c.height = img.naturalHeight;
-                        c.getContext('2d').drawImage(img, 0, 0);
-                        r.push(c.toDataURL('image/png').split(',')[1]);
-                    } catch(e) {}
-                });
-                return r;
-            }
-            """) or []
-            for j, b64 in enumerate(images_b64):
-                try:
-                    body = base64.b64decode(b64)
-                    if len(body) < 10240:
-                        continue
-                    fp = OUTPUT_DIR / f"gemini_{timestamp}_{j+1}.png"
-                    fp.write_bytes(body)
-                    saved.append(str(fp))
-                    print(f"  已保存: {fp.name} ({len(body)//1024}KB)")
-                except Exception as e:
-                    print(f"  下载失败: {e}")
+                print(f"  已保存: {fp.name} ({len(body)//1024}KB)")
+            except Exception as e:
+                print(f"  下载失败: {e}")
         return saved
 
     def stop(self):
